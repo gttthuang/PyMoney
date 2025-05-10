@@ -157,34 +157,19 @@ class Categories:
                     return True
         return False
 
-    def find_subcategories(self, target, categories=None):
-        """Return a flat list of target and all its subcategories."""
-        if categories is None:
-            categories = self._categories
-        result = []
-        found = False
-        for i, cat in enumerate(categories):
-            if isinstance(cat, str):
-                if cat == target:
-                    found = True
-                    result.append(cat)
-            elif isinstance(cat, list):
-                if found:
-                    result += self._flatten(cat)
-                    found = False
-                else:
-                    result += self.find_subcategories(target, cat)
-        return result
-
-    def _flatten(self, categories):
-        """Flatten a nested category list into a flat list of strings."""
-        result = []
-        for cat in categories:
-            if isinstance(cat, str):
-                result.append(cat)
-            elif isinstance(cat, list):
-                result += self._flatten(cat)
-        return result
+    def find_subcategories(self, target):
+        """Return a flat list of target and all its subcategories using a generator."""
+        def find_subcategories_gen(category, categories, found=False):
+            if isinstance(categories, list):
+                for index, child in enumerate(categories):
+                    yield from find_subcategories_gen(category, child, found)
+                    if child == category and index + 1 < len(categories) and isinstance(categories[index + 1], list):
+                        # When the target category is found, recursively yield from its subcategories
+                        yield from find_subcategories_gen(category, categories[index + 1], True)
+            else:
+                if categories == category or found:
+                    yield categories
+        return list(find_subcategories_gen(target, self._categories))
 
 # Main program
 categories = Categories()
@@ -205,6 +190,10 @@ while True:
     elif command == 'find':
         category = input("Which category do you want to find? ")
         target_categories = categories.find_subcategories(category)
+        # debug
+        print("---------- debug ----------")
+        print(target_categories)
+        print("---------------------------")
         records.find(target_categories)
     elif command == 'exit':
         records.save()
